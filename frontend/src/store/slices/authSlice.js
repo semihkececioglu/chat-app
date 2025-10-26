@@ -3,7 +3,7 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Get user from localstorage
+// Get user from localStorage
 const user = JSON.parse(localStorage.getItem("user"));
 
 const initialState = {
@@ -24,11 +24,15 @@ export const register = createAsyncThunk(
         `${API_URL}/api/auth/register`,
         userData
       );
+
       if (response.data) {
         localStorage.setItem("user", JSON.stringify(response.data));
       }
+
+      return response.data;
     } catch (error) {
-      const message = error.response?.data?.message || error.message;
+      const message =
+        error.response?.data?.message || error.message || "Registration failed";
       return thunkAPI.rejectWithValue(message);
     }
   }
@@ -40,12 +44,15 @@ export const login = createAsyncThunk(
   async (userData, thunkAPI) => {
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, userData);
+
       if (response.data) {
         localStorage.setItem("user", JSON.stringify(response.data));
       }
+
       return response.data;
     } catch (error) {
-      const message = error.response?.data?.message || error.message;
+      const message =
+        error.response?.data?.message || error.message || "Login failed";
       return thunkAPI.rejectWithValue(message);
     }
   }
@@ -72,39 +79,64 @@ const authSlice = createSlice({
       // Register
       .addCase(register.pending, (state) => {
         state.isLoading = true;
+        state.isError = false;
+        state.isSuccess = false;
+        state.message = "";
       })
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
-        state.token = action.payload.token;
+        state.isError = false;
+        state.message = "";
+
+        if (action.payload) {
+          state.user = action.payload;
+          state.token = action.payload.token || null;
+        }
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
-        state.message = action.payload;
+        state.isSuccess = false;
+        state.message = action.payload || "Registration failed";
         state.user = null;
+        state.token = null;
       })
-      //Login
+
+      // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
+        state.isError = false;
+        state.isSuccess = false;
+        state.message = "";
       })
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
-        state.token = action.payload.token;
+        state.isError = false;
+        state.message = "";
+
+        if (action.payload) {
+          state.user = action.payload;
+          state.token = action.payload.token || null;
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
-        state.message = action.payload;
+        state.isSuccess = false;
+        state.message = action.payload || "Login failed";
         state.user = null;
+        state.token = null;
       })
+
       // Logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.token = null;
+        state.isSuccess = false;
+        state.isError = false;
+        state.message = "";
       });
   },
 });
