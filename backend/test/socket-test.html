@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.io Real-Time Chat Test</title>
+    <!-- Socket.io client from backend -->
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+      h1 {
+        color: #667eea;
+        margin-bottom: 20px;
+        text-align: center;
+        font-size: 28px;
+      }
+      #status {
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        font-size: 16px;
+        transition: all 0.3s;
+      }
+      .connected {
+        background: #d4edda;
+        color: #155724;
+        border: 2px solid #c3e6cb;
+      }
+      .disconnected {
+        background: #f8d7da;
+        color: #721c24;
+        border: 2px solid #f5c6cb;
+      }
+      .info {
+        background: #e7f3ff;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        font-size: 14px;
+        color: #004085;
+        border-left: 4px solid #667eea;
+      }
+      input {
+        width: 100%;
+        padding: 12px 15px;
+        margin: 10px 0;
+        border: 2px solid #e1e4e8;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border 0.3s;
+      }
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        margin: 8px 0;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      button:active {
+        transform: translateY(0);
+      }
+      .btn-connect {
+        background: #667eea;
+        color: white;
+      }
+      .btn-connect:hover {
+        background: #5568d3;
+      }
+      .btn-disconnect {
+        background: #dc3545;
+        color: white;
+      }
+      .btn-disconnect:hover {
+        background: #c82333;
+      }
+      .btn-send {
+        background: #28a745;
+        color: white;
+      }
+      .btn-send:hover {
+        background: #218838;
+      }
+      h3 {
+        color: #333;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-bottom: 2px solid #e1e4e8;
+        padding-bottom: 8px;
+      }
+      #messages {
+        max-height: 450px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 8px;
+        border: 1px solid #e1e4e8;
+      }
+      #messages::-webkit-scrollbar {
+        width: 8px;
+      }
+      #messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+      #messages::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+      #messages::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+      .message {
+        padding: 12px 15px;
+        margin: 10px 0;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        animation: slideIn 0.3s ease;
+      }
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .message.error {
+        border-left: 4px solid #dc3545;
+        background: #fff5f5;
+      }
+      .message.system {
+        border-left: 4px solid #ffc107;
+        background: #fffef5;
+      }
+      .message.user {
+        border-left: 4px solid #667eea;
+        background: #f0f3ff;
+      }
+      .message strong {
+        color: #667eea;
+        font-size: 15px;
+      }
+      .message small {
+        color: #999;
+        font-size: 11px;
+        margin-left: 8px;
+      }
+      .message-content {
+        margin-top: 5px;
+        color: #333;
+        line-height: 1.5;
+      }
+      .user-ids {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #666;
+        margin: 10px 0;
+        font-family: "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Socket.io Real-Time Chat Test</h1>
+
+      <div id="status" class="disconnected">Disconnected</div>
+
+      <div class="info">
+        <strong>Instructions:</strong><br />
+        1. Login in Postman → Copy JWT token<br />
+        2. Paste token below → Click Connect<br />
+        3. Open another browser → Connect with different user<br />
+        4. Send messages between browsers!
+      </div>
+
+      <input
+        type="text"
+        id="token"
+        placeholder="Paste your JWT token here..."
+      />
+      <button class="btn-connect" onclick="connect()">Connect to Server</button>
+      <button class="btn-disconnect" onclick="disconnect()">Disconnect</button>
+
+      <h3>Chat Messages</h3>
+      <div id="messages"></div>
+
+      <div class="user-ids" id="userInfo" style="display: none">
+        <strong>Your User ID:</strong> <span id="myUserId"></span><br />
+        <strong>Your Socket ID:</strong> <span id="mySocketId"></span>
+      </div>
+
+      <h3>Send Message</h3>
+      <input
+        type="text"
+        id="receiverId"
+        placeholder="Receiver User ID (get from: GET /api/users)"
+      />
+      <input
+        type="text"
+        id="messageContent"
+        placeholder="Type your message here..."
+        onkeypress="handleKeyPress(event)"
+      />
+      <button class="btn-send" onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <script>
+      let socket = null;
+      let myUserId = null;
+
+      // Check if Socket.io loaded on page load
+      window.addEventListener("load", () => {
+        if (typeof io !== "undefined") {
+          addMessage(
+            "System",
+            "Socket.io client loaded successfully!",
+            "system"
+          );
+          addMessage(
+            "System",
+            "Paste your JWT token above and click Connect",
+            "system"
+          );
+        } else {
+          addMessage(
+            "Error",
+            "Socket.io failed to load! Make sure backend is running on http://localhost:5000",
+            "error"
+          );
+        }
+      });
+
+      /**
+       * Connect to Socket.io server
+       */
+      function connect() {
+        const token = document.getElementById("token").value.trim();
+
+        if (!token) {
+          alert("Please enter a JWT token!");
+          return;
+        }
+
+        addMessage("System", "Connecting to server...", "system");
+
+        // Initialize socket connection with authentication
+        socket = io("http://localhost:5000", {
+          auth: { token: token },
+        });
+
+        // ==================== CONNECTION EVENTS ====================
+
+        socket.on("connect", () => {
+          console.log("Connected with Socket ID:", socket.id);
+          document.getElementById("status").textContent = "Connected";
+          document.getElementById("status").className = "connected";
+          document.getElementById("mySocketId").textContent = socket.id;
+          document.getElementById("userInfo").style.display = "block";
+          addMessage("System", `Connected! Socket ID: ${socket.id}`, "system");
+        });
+
+        socket.on("disconnect", () => {
+          console.log("Disconnected");
+          document.getElementById("status").textContent = "Disconnected";
+          document.getElementById("status").className = "disconnected";
+          document.getElementById("userInfo").style.display = "none";
+          addMessage("System", "Disconnected from server", "system");
+        });
+
+        // ==================== WELCOME & USER INFO ====================
+
+        socket.on("welcome", (data) => {
+          addMessage("Server", `${data.message}`, "system");
+          addMessage("System", `Logged in as: ${data.username}`, "system");
+        });
+
+        // ==================== ONLINE USERS ====================
+
+        socket.on("online_users", (users) => {
+          myUserId = null;
+          addMessage("System", `Online users: ${users.length}`, "system");
+          console.log("All online user IDs:", users);
+
+          // Auto-join rooms with all online users
+          users.forEach((userId) => {
+            // Save own user ID
+            socket.emit("join_conversation", userId);
+            console.log("Auto-joining room with user:", userId);
+          });
+
+          addMessage(
+            "System",
+            `Joined ${users.length} conversation rooms`,
+            "system"
+          );
+        });
+
+        socket.on("user_online", (data) => {
+          addMessage("System", `${data.username} is now online`, "system");
+          // Auto-join room with newly online user
+          socket.emit("join_conversation", data.userId);
+          console.log(
+            "Auto-joined room with newly online user:",
+            data.username,
+            data.userId
+          );
+        });
+
+        socket.on("user_offline", (data) => {
+          addMessage("System", `${data.username} went offline`, "system");
+        });
+
+        // ==================== MESSAGE EVENTS ====================
+
+        // THIS IS THE MOST IMPORTANT EVENT!
+        socket.on("receive_message", (message) => {
+          console.log("MESSAGE RECEIVED:", message);
+          addMessage(message.sender.username, message.content, "user");
+
+          // Play notification sound (optional)
+          playNotificationSound();
+        });
+
+        socket.on("new_message_notification", (data) => {
+          console.log("New message notification:", data);
+          addMessage(
+            "Notification",
+            `New message from ${data.sender.username}`,
+            "system"
+          );
+        });
+
+        // ==================== TYPING INDICATORS ====================
+
+        socket.on("user_typing", (data) => {
+          addMessage("System", `${data.username} is typing...`, "system");
+          setTimeout(() => {
+            // Remove typing indicator after 3 seconds
+          }, 3000);
+        });
+
+        socket.on("user_stop_typing", (data) => {
+          // User stopped typing
+        });
+
+        // ==================== ERROR HANDLING ====================
+
+        socket.on("connect_error", (error) => {
+          addMessage("Error", `Connection failed: ${error.message}`, "error");
+          console.error("Connection error:", error);
+          document.getElementById("status").textContent = "Connection Failed";
+          document.getElementById("status").className = "disconnected";
+        });
+
+        socket.on("message_error", (error) => {
+          addMessage("Error", `${error.message}`, "error");
+        });
+
+        // ==================== DEBUG: LOG ALL EVENTS ====================
+
+        socket.onAny((event, ...args) => {
+          console.log("Socket Event:", event, args);
+        });
+      }
+
+      /**
+       * Disconnect from server
+       */
+      function disconnect() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+          addMessage("System", "Manually disconnected", "system");
+        }
+      }
+
+      /**
+       * Send a message
+       */
+      function sendMessage() {
+        if (!socket || !socket.connected) {
+          alert("Please connect first!");
+          return;
+        }
+
+        const receiverId = document.getElementById("receiverId").value.trim();
+        const content = document.getElementById("messageContent").value.trim();
+
+        if (!receiverId) {
+          alert("Please enter Receiver User ID!");
+          return;
+        }
+
+        if (!content) {
+          alert("Please enter a message!");
+          return;
+        }
+
+        console.log("Sending message...");
+        console.log("Receiver ID:", receiverId);
+        console.log("Content:", content);
+
+        // First, ensure we're in the room
+        socket.emit("join_conversation", receiverId);
+        console.log("Joined room with:", receiverId);
+
+        // Small delay to ensure room join
+        setTimeout(() => {
+          // Send the message
+          socket.emit("send_message", {
+            receiverId: receiverId,
+            content: content,
+          });
+
+          console.log("Message sent!");
+
+          // Display in own chat
+          addMessage("You", content, "user");
+
+          // Clear input
+          document.getElementById("messageContent").value = "";
+        }, 100);
+      }
+
+      /**
+       * Handle Enter key press in message input
+       */
+      function handleKeyPress(event) {
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      }
+
+      /**
+       * Add message to chat window
+       */
+      function addMessage(sender, content, type = "message") {
+        const messagesDiv = document.getElementById("messages");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${type}`;
+
+        const time = new Date().toLocaleTimeString();
+        messageDiv.innerHTML = `
+        <div>
+          <strong>${sender}</strong>
+          <small>${time}</small>
+        </div>
+        <div class="message-content">${content}</div>
+      `;
+
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      /**
+       * Play notification sound
+       */
+      function playNotificationSound() {
+        // Simple beep (optional)
+        try {
+          const audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+
+          oscillator.frequency.value = 800;
+          oscillator.type = "sine";
+
+          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(
+            0.01,
+            audioContext.currentTime + 0.2
+          );
+
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.2);
+        } catch (e) {
+          // Ignore sound errors
+        }
+      }
+    </script>
+  </body>
+</html>
