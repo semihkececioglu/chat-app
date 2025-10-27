@@ -83,4 +83,8 @@ const sendMessage = async (req, res) => {
   }
 };
 
-module.exports = { getMessages, getConversations, sendMessage };
+module.exports = {
+  sendMessage,
+  getMessages,
+  getConversations,
+};
