@@ -1,16 +1,10 @@
 const express = require("express");
-const {
-  getMessages,
-  getConversations,
-  sendMessage,
-} = require("../controllers/messageController");
+const router = express.Router();
+const messageController = require("../controllers/messageController");
 const { protect } = require("../middleware/authMiddleware");
 
-const router = express.Router();
-
-// All routes are protected
-router.get("/conversations", protect, getConversations);
-router.get("/:userId", protect, getMessages);
-router.post("/", protect, sendMessage);
+router.post("/", protect, messageController.sendMessage);
+router.get("/:userId", protect, messageController.getMessages);
+router.get("/conversations", protect, messageController.getConversations);
 
 module.exports = router;
